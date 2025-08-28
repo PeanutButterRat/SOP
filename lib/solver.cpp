@@ -1573,7 +1573,7 @@ bool solver::workload_request()
                 time_workstealing = time_workstealing + t.get_time_seconds();
                 return false;
             }
-            int target = local_pools->choose_victim(thread_id, work_remaining, stolen_from);
+            int target = local_pools->choose_victim(thread_id, stolen_from);
 
             if (target == -1)
             {
