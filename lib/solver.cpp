@@ -404,10 +404,12 @@ void solver::solve(string f_name, int thread_num)
             LKH_thread.join();
 
     // DIAGNOSTIC : Enumerated Nodes
-    //  unsigned long long enumerated_nodes_sum = 0;
-    //  for(int i = 0; i < enumerated_nodes.size(); i++){
-    //      enumerated_nodes_sum += enumerated_nodes[i];
-    //  }
+    unsigned long long enumerated_nodes_sum = 0;
+    for (int i = 0; i < enumerated_nodes.size(); i++)
+    {
+        enumerated_nodes_sum += enumerated_nodes[i];
+    }
+    std::cout << "Total enumerated nodes: " << enumerated_nodes_sum << endl;
 
     auto total_time = chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     std::cout << "------------------------" << thread_total << " thread"
@@ -932,7 +934,7 @@ void solver::enumerate()
         }
 
         // DIAGNOSTIC: enum_nodes
-        // enumerated_nodes[thread_id] += ready_node_count;
+        enumerated_nodes[thread_id] += ready_node_count;
 
         // Sort the ready list and push into local pool
         if (!ready_list.empty())
