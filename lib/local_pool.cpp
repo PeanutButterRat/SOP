@@ -184,65 +184,32 @@ bool local_pool::out_of_work(int thread_number)
     return pools[thread_number].size() == 0;
 };
 
-int local_pool::choose_victim(int thread_number, std::vector<std::atomic<unsigned long long>> &work_remaining, int stolen_from)
-{
-    unsigned long long max_value = 0;
-    int max_id = -1;
-    bool flag = false;
-    for (int i = 0; i < thread_count; i++)
-    {
-        if ((stolen_from & (1 << i)) != 0 || i == thread_number)
-            continue;
-        locks[i].lock();
-        unsigned long long node_value = 0;
-        if (pools[i].size() > 1 && pools[i].front().size() != 0)
-        {
-            node_value = pools[i].front().back().current_node_value;
-        }
-        locks[i].unlock();
-        if (node_value > max_value)
-        {
-            max_value = node_value;
-            max_id = i;
+int local_pool::choose_victim(int thread_number, int stolen_from) {
+    int lowest_bound = INT_MAX;
+    int victim = -1;
+ 
+    for (int thread = 0; thread < thread_count; thread++) {
+        if (thread == thread_number || (stolen_from & (1 << thread)) != 0) {
             continue;
         }
-        if (max_value == 0 && (!flag || work_remaining[i] > work_remaining[max_id]))
-        {
-            max_value = node_value;
-            max_id = i;
-            flag = true;
+
+        locks[thread].lock();
+    
+        for (auto& depth : pools[thread]) {
+            for (auto& node : depth) {
+                if (node.lower_bound < lowest_bound) {
+                    lowest_bound = node.lower_bound;
+                    victim = thread;
+                } 
+            }
         }
+
+        locks[thread].unlock();
     }
-    return max_id;
+
+    return victim;
 }
 
-// int local_pool::choose_victim(int thread_number, std::vector<std::atomic<unsigned long long>>& work_remaining, int stolen_from){
-//     double max_value = -1;
-//     int max_id = -1;
-//     //std::cout << stolen_from << std::endl;
-//     for(int i = 0; i < thread_count; i++){
-//         if((stolen_from & (1 << i)) != 0 )
-//             continue;
-//         if(i == thread_number)
-//             continue;
-//         if(work_remaining[i] / (depths[i] + 1) > max_value){
-//             max_value = work_remaining[i] / (depths[i] + 1);
-//             max_id = i;
-//             continue;
-//         }
-//         // if(work_remaining[i] == max_value && depths[i] < depths[max_id]){
-//         //     max_value = work_remaining[i];
-//         //     max_id = i;
-//         // }
-//     }
-//     return max_id;
-// }
-
-// int local_pool::choose_victim(int thread_number, std::vector<std::atomic<unsigned long long>>& work_remaining, int a){
-//     int target = rand() % 30;
-//     while(target == thread_number) target = rand() % 30;
-//     return target;
-// }
 
 int local_pool::active_pool_size(int thread_number)
 { // TODO: this is not strictly necessary
