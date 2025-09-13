@@ -194,14 +194,16 @@ int local_pool::choose_victim(int thread_number, int stolen_from) {
         }
 
         locks[thread].lock();
-    
+
         for (auto& depth : pools[thread]) {
             for (auto& node : depth) {
                 if (node.lower_bound < lowest_bound) {
                     lowest_bound = node.lower_bound;
                     victim = thread;
-                } 
+                }
             }
+
+            if (victim != -1) break;  // Break out after finding a valid victim at the shallowest level.
         }
 
         locks[thread].unlock();
