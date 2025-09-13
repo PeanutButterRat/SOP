@@ -184,6 +184,46 @@ bool local_pool::out_of_work(int thread_number)
     return pools[thread_number].size() == 0;
 };
 
+#if defined(CHOOSE_VICTIM_WORK_REMAINING)
+int local_pool::choose_victim(int thread_number, std::vector<std::atomic<unsigned long long>> &work_remaining, int stolen_from)
+{
+    unsigned long long max_value = 0;
+    int max_id = -1;
+    bool flag = false;
+    for (int i = 0; i < thread_count; i++)
+    {
+        if ((stolen_from & (1 << i)) != 0 || i == thread_number)
+            continue;
+        locks[i].lock();
+        unsigned long long node_value = 0;
+        if (pools[i].size() > 1 && pools[i].front().size() != 0)
+        {
+            node_value = pools[i].front().back().current_node_value;
+        }
+        locks[i].unlock();
+        if (node_value > max_value)
+        {
+            max_value = node_value;
+            max_id = i;
+            continue;
+        }
+        if (max_value == 0 && (!flag || work_remaining[i] > work_remaining[max_id]))
+        {
+            max_value = node_value;
+            max_id = i;
+            flag = true;
+        }
+    }
+    return max_id;
+}
+#elif defined(CHOOSE_VICTIM_RANDOM)
+int local_pool::choose_victim(int thread_number, std::vector<std::atomic<unsigned long long>>& work_remaining, int a){
+    int target = rand() % 30;
+    while(target == thread_number) target = rand() % 30;
+    return target;
+}
+#else
+// DEFAULT: optimality gap implementation
 int local_pool::choose_victim(int thread_number, int stolen_from) {
     int lowest_bound = INT_MAX;
     int victim = -1;
@@ -209,7 +249,7 @@ int local_pool::choose_victim(int thread_number, int stolen_from) {
 
     return victim;
 }
-
+#endif
 
 int local_pool::active_pool_size(int thread_number)
 { // TODO: this is not strictly necessary
